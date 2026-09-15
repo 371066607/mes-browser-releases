@@ -70,7 +70,13 @@ with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
     tag = 'v' + version
     subprocess.run(['gh', 'release', 'create', tag, '--repo', repository, '--draft', '--title', 'Mes Browser ' + version + ' · Windows', '--notes-file', str(notes_file)], check=True)
     subprocess.run(['gh', 'release', 'upload', tag, '--repo', repository, *[str(root / name) for name in names]], check=True)
-    metadata = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/releases/tags/{tag}']))
+    # Tag lookup does not resolve an unpublished draft. The authenticated list
+    # includes the newly created draft and its uploaded asset digests.
+    releases = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/releases?per_page=100']))
+    drafts = [release for release in releases if release['tag_name'] == tag and release['draft']]
+    if len(drafts) != 1:
+        raise SystemExit('Expected exactly one matching draft; refusing publication')
+    metadata = drafts[0]
     remote = {asset['name']: asset.get('digest') for asset in metadata['assets']}
     if remote != {name: 'sha256:' + value for name, value in actual.items()}:
         raise SystemExit('Uploaded asset digest mismatch; release remains draft')
