@@ -1,0 +1,27 @@
+name: Publish verified Windows packages
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_sha256:
+        description: 'SHA-256 of the already verified artifact archive'
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: publish-windows-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Publish exact verified binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WINDOWS_PACKAGE_ARTIFACT_URL: ${{ secrets.WINDOWS_PACKAGE_ARTIFACT_URL }}
+          EXPECTED_ARTIFACT_SHA256: ${{ inputs.artifact_sha256 }}
+        run: python3 .github/scripts/publish-windows.py
