@@ -13,29 +13,35 @@ repository = os.environ['GITHUB_REPOSITORY']
 expected = os.environ['EXPECTED_ARTIFACT_SHA256'].removeprefix('sha256:')
 if not re.fullmatch(r'[0-9a-f]{64}', expected):
     raise SystemExit('Invalid expected artifact SHA-256')
-version = '1.0.1'
+version = '1.0.2'
 names = [f'MesBrowser-Setup-{version}.exe', f'MesBrowser-{version}-windows-amd64-portable.zip', 'SHA256SUMS.txt']
-notes = '''## Windows 1.0.1
+notes = '''## Mes Browser 1.0.2 · Windows / macOS
 
-针对安装后双击无窗口的问题，补齐嵌入的前端页面，并改为当前用户安装，避免默认安装到 Program Files 后无法写入配置和数据库。本包已通过 Windows Server 2025 CI，供 Windows 11 设备继续实测。
+本版开始，桌面端可以**在应用内检查并安装界面更新**，常规界面改动不再需要用户重新下载整包。
 
-- 推荐下载 `MesBrowser-Setup-1.0.1.exe`，按默认目录安装后，从开始菜单启动 Mes Browser。
-- 默认目录：`%LOCALAPPDATA%\\Programs\\Mes Browser`，无需管理员权限。
-- 已包含 Windows x64 浏览器内核和代理运行时；未启用 DevTools。
-- 启动故障会记录到 `%LOCALAPPDATA%\\Ant Browser\\logs`；已接入的启动错误会弹框说明，不再一律静默退出。
-- 便携版也可使用；请解压到当前用户可写的目录后运行 `mes-browser.exe`。
+### 应用内更新（本次的重点）
 
-### 验证范围
+- 客户端内置更新签名公钥，清单由离线私钥签名后才被接受；来源与签名都验过才安装。
+- 两级更新：界面资源热更新（下载几 MB、重载界面、**不重装**）与整包自更新（替换安装后重启）。
+- 界面坏掉不再让应用打不开：校验失败会丢弃该版本并回落到内置界面；连续两个坏界面会被退役。
+- 界面若调用了当前二进制没有的后端能力，启动自检会拦下并回退，而不是等用户点到才报错。
+- 下载制品只允许来自白名单主机，重定向逐跳校验。
 
-在 GitHub Windows Server 2025 上，验证了普通无参数启动显示窗口、受限权限安装、登录框实际输入、覆盖安装后再次启动、已有配置和测试数据保留、最小化后二次启动唤醒窗口，以及随包内核通过 CDP 执行 JavaScript。只读目录和锁错误注入均验证了原生错误框、独立启动日志和关闭后退出码 1。验证过程确认管理员身份已移除，且不能写入 Program Files。安装版、升级版和便携版的桌面 EXE 哈希一致；本次发布直接复用这批验证包，没有重新编译或重打包。
+### Windows
 
-尚未在反馈问题的 Windows 11 设备上验收，也未验证线上账号业务。Windows 安装包未签名。
+- 安装与更新都改为**当前用户**，默认目录 `%LOCALAPPDATA%\\Programs\\Mes Browser`，不再需要管理员权限；更新过程不再弹 UAC。
+- 旧 `Program Files` 安装不会被自动迁移或删除；如需保留旧目录中的数据，请先自行备份。
 
-### 从 1.0.0 更新
+### macOS
 
-升级前请先退出旧版 Mes Browser；旧版缺少新的窗口激活协议。
+- 更新后应用内替换整包并重启；界面热更新不需要重启。
+- 仍为 ad-hoc 签名、未公证（与 1.0.1 相同），首次打开若被 Gatekeeper 拦下，请在「系统设置 → 隐私与安全性」中放行。
 
-本版使用新的当前用户安装目录，不会自动删除或迁移旧版 Program Files 目录。安装完成后使用开始菜单中新建的 Mes Browser 快捷方式；旧目录中若有需要保留的数据，请先保留。
+### 已知限制
+
+- 本版之前的安装包没有内置公钥，收不到任何更新；装了本版之后才会生效——这一次的整包更新是唯一省不掉的一次。
+- macOS 未公证、Windows 安装包未签名（与上一版相同）。
+- 旧数据迁移的权限诊断仍有已知失败，详见 `macos-known-limitations.txt`。
 '''
 with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
     root = Path(temporary)
