@@ -74,7 +74,7 @@ with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
     notes_file = root / 'release-notes.md'
     notes_file.write_text(notes, encoding='utf-8')
     tag = 'v' + version
-    subprocess.run(['gh', 'release', 'create', tag, '--repo', repository, '--draft', '--title', 'Mes Browser ' + version + ' · Windows', '--notes-file', str(notes_file)], check=True)
+    subprocess.run(['gh', 'release', 'create', tag, '--repo', repository, '--draft', '--title', 'Mes Browser ' + version + ' · Windows / macOS', '--notes-file', str(notes_file)], check=True)
     subprocess.run(['gh', 'release', 'upload', tag, '--repo', repository, *[str(root / name) for name in names]], check=True)
     # Tag lookup does not resolve an unpublished draft. The authenticated list
     # includes the newly created draft and its uploaded asset digests.
