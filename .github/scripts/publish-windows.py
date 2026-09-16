@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
                 digest.update(block)
         actual[name] = digest.hexdigest()
         print(name, (root / name).stat().st_size, actual[name], flush=True)
-    expected_lines = [actual[name] + '  ' + name for name in names[:2]]
+    expected_lines = [actual[name] + '  ' + name for name in names[:-1]]
     if (root / 'SHA256SUMS.txt').read_text(encoding='utf-8-sig').splitlines() != expected_lines:
         raise SystemExit('Package checksum file mismatch')
     notes_file = root / 'release-notes.md'
