@@ -13,34 +13,27 @@ repository = os.environ['GITHUB_REPOSITORY']
 expected = os.environ['EXPECTED_ARTIFACT_SHA256'].removeprefix('sha256:')
 if not re.fullmatch(r'[0-9a-f]{64}', expected):
     raise SystemExit('Invalid expected artifact SHA-256')
-version = '1.0.2'
+version = '1.0.3'
 names = [f'MesBrowser-Setup-{version}.exe', f'MesBrowser-{version}-windows-amd64-portable.zip', 'SHA256SUMS.txt']
-notes = '''## Mes Browser 1.0.2 · Windows / macOS
+notes = '''## Mes Browser 1.0.3 · Windows / macOS
 
-本版开始，桌面端可以**在应用内检查并安装界面更新**，常规界面改动不再需要用户重新下载整包。
+修复 1.0.2 上「实例无法启动」的问题：应用自带的浏览器内核是包的一部分，它不再被服务端记录的版本号否决。
 
-### 应用内更新（本次的重点）
+### 内核（本次修复）
 
-- 客户端内置更新签名公钥，清单由离线私钥签名后才被接受；来源与签名都验过才安装。
-- 两级更新：界面资源热更新（下载几 MB、重载界面、**不重装**）与整包自更新（替换安装后重启）。
-- 界面坏掉不再让应用打不开：校验失败会丢弃该版本并回落到内置界面；连续两个坏界面会被退役。
-- 界面若调用了当前二进制没有的后端能力，启动自检会拦下并回退，而不是等用户点到才报错。
-- 下载制品只允许来自白名单主机，重定向逐跳校验。
+- **内核随包一起发布，版本不再决定能否启动**：实例配置的内核与服务端发布的版本号只参与「优先用哪个」，不再作为放行条件。
+- 服务端没有给出版本号、或给的版本与你机器上的不一致时，**照常启动**，使用包内自带内核。
+- 启动之后不再因为「实际运行的内核版本 ≠ 发布环境记录的版本」而中止，改为写入日志。
+- 仍然只使用随应用提供、清单校验通过的内核；包内内核的身份由清单与 payload 摘要保证。
 
-### Windows
+### 从 1.0.2 更新
 
-- 安装与更新都改为**当前用户**，默认目录 `%LOCALAPPDATA%\\Programs\\Mes Browser`，不再需要管理员权限；更新过程不再弹 UAC。
-- 旧 `Program Files` 安装不会被自动迁移或删除；如需保留旧目录中的数据，请先自行备份。
+存在 1.0.2 上启动报 `public-cookie run has no bound browser core artifact` 的实例，升级到本版即可正常启动；无需改动实例的内核配置。
 
-### macOS
+### 已知限制（与 1.0.2 相同）
 
-- 更新后应用内替换整包并重启；界面热更新不需要重启。
-- 仍为 ad-hoc 签名、未公证（与 1.0.1 相同），首次打开若被 Gatekeeper 拦下，请在「系统设置 → 隐私与安全性」中放行。
-
-### 已知限制
-
-- 本版之前的安装包没有内置公钥，收不到任何更新；装了本版之后才会生效——这一次的整包更新是唯一省不掉的一次。
-- macOS 未公证、Windows 安装包未签名（与上一版相同）。
+- 本版之前的安装包没有内置更新公钥，收不到应用内更新；装了带公钥的版本之后才会生效。
+- macOS 未公证（ad-hoc 签名），Windows 安装包未签名。
 - 旧数据迁移的权限诊断仍有已知失败，详见 `macos-known-limitations.txt`。
 '''
 with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
