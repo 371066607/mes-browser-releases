@@ -9,33 +9,26 @@ import tempfile
 import urllib.request
 import zipfile
 
+from windows_verification import validate_bundle, verify_origin
+
 repository = os.environ['GITHUB_REPOSITORY']
+if os.environ.get('GITHUB_REF') != 'refs/heads/main':
+    raise SystemExit('Publication requires the trusted release repository main branch')
 expected = os.environ['EXPECTED_ARTIFACT_SHA256'].removeprefix('sha256:')
 if not re.fullmatch(r'[0-9a-f]{64}', expected):
     raise SystemExit('Invalid expected artifact SHA-256')
-version = '1.0.5'
+version = os.environ['PACKAGE_VERSION']
+if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', version):
+    raise SystemExit('Invalid package version')
 # The portable ZIP is gone: the installer is already a per-user, no-elevation
 # install, so a portable copy had no separate audience and only cost build time.
 names = [f'MesBrowser-Setup-{version}.exe', 'SHA256SUMS.txt']
-notes = '''## Mes Browser 1.0.5 · Windows / macOS
+def build_api(endpoint):
+    environment = os.environ.copy()
+    environment['GH_TOKEN'] = os.environ.get('WINDOWS_BUILD_READ_TOKEN') or environment.get('GH_TOKEN', '')
+    return json.loads(subprocess.check_output(['gh', 'api', endpoint], env=environment, text=True))
 
-本版继续收拾 Windows 上「云模式被本机权限锁死」这一类问题，并让状态与缓存路径更耐操。
 
-### 云模式与缓存
-
-- 安装目录不可写时（Program Files、其他账户建立的目录、带着旧 ACL 拷贝过来的目录），状态与缓存改到 `%LOCALAPPDATA%`；安装目录可写时行为不变。
-- 缓存根恢复反复失败时不再死磕坏目录：会隔离并在原处重建；成员 public-cookie 缓存改为按 scope 隔离，一个 scope 坏掉不再让整块缓存不可用。
-- Windows 遗留文件清理对 ACCESS_DENIED / SHARING_VIOLATION / LOCK_VIOLATION 做有限重试，并可修复删除句柄与权限。
-
-### 更新
-
-- 应用内更新通道改由公开仓的 release 资产提供：从本版起，装了 1.0.2 及以上（内置公钥）的客户端会在应用内直接看到更新。
-
-### 已知限制（与前几版相同）
-
-- macOS 为 ad-hoc 签名、未公证；Windows 安装包未签名。
-- 本版之前的安装包没有内置更新公钥，收不到应用内更新。
-'''
 with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
     root = Path(temporary)
     archive = root / 'verified-artifact.zip'
@@ -47,12 +40,27 @@ with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
     if digest.hexdigest() != expected:
         raise SystemExit('Artifact digest mismatch; refusing publication')
     with zipfile.ZipFile(archive) as source:
-        for name in names:
+        for name in names + ['verification.json', 'build-provenance.json']:
             if source.namelist().count(name) != 1:
                 raise SystemExit('Missing or duplicate package: ' + name)
             with source.open(name) as data, (root / name).open('wb') as target:
                 while block := data.read(1024 * 1024):
                     target.write(block)
+    report = validate_bundle(root, version)
+    if str(report['verificationRun']) != os.environ['VERIFICATION_RUN'] or str(report['sourceBuildRun']) != os.environ['SOURCE_BUILD_RUN']:
+        raise SystemExit('Requested run IDs do not match the verification report')
+    verify_origin(report, digest.hexdigest(), build_api)
+    notes = f'''## Mes Browser {version} · Windows
+
+发布文件与完整 Windows 验证使用的安装器 SHA-256 一致。
+
+- 验证套件：{report['suite']}，必需场景全部通过。
+- 源码提交：`{report['sourceCommit']}`。
+- 安装包 SHA-256：`{report['installerSha256']}`。
+- Windows Server 2025 自动化验证不代表用户 Windows 11 设备或生产账号验收。
+- Windows 安装包未签名。
+- 此次发布仅包含 Windows 安装包；macOS 请使用已有含 macOS 资产的版本。
+'''
     actual = {}
     for name in names:
         digest = hashlib.sha256()
@@ -67,7 +75,7 @@ with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
     notes_file = root / 'release-notes.md'
     notes_file.write_text(notes, encoding='utf-8')
     tag = 'v' + version
-    subprocess.run(['gh', 'release', 'create', tag, '--repo', repository, '--draft', '--title', 'Mes Browser ' + version + ' · Windows / macOS', '--notes-file', str(notes_file)], check=True)
+    subprocess.run(['gh', 'release', 'create', tag, '--repo', repository, '--draft', '--title', 'Mes Browser ' + version + ' · Windows', '--notes-file', str(notes_file)], check=True)
     subprocess.run(['gh', 'release', 'upload', tag, '--repo', repository, *[str(root / name) for name in names]], check=True)
     # Tag lookup does not resolve an unpublished draft. The authenticated list
     # includes the newly created draft and its uploaded asset digests.
