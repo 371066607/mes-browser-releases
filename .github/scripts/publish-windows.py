@@ -13,28 +13,35 @@ repository = os.environ['GITHUB_REPOSITORY']
 expected = os.environ['EXPECTED_ARTIFACT_SHA256'].removeprefix('sha256:')
 if not re.fullmatch(r'[0-9a-f]{64}', expected):
     raise SystemExit('Invalid expected artifact SHA-256')
-version = '1.0.3'
-names = [f'MesBrowser-Setup-{version}.exe', f'MesBrowser-{version}-windows-amd64-portable.zip', 'SHA256SUMS.txt']
-notes = '''## Mes Browser 1.0.3 · Windows / macOS
+version = '1.0.4'
+# The portable ZIP is gone: the installer is already a per-user, no-elevation
+# install, so a portable copy had no separate audience and only cost build time.
+names = [f'MesBrowser-Setup-{version}.exe', 'SHA256SUMS.txt']
+notes = '''## Mes Browser 1.0.4 · Windows / macOS
 
-修复 1.0.2 上「实例无法启动」的问题：应用自带的浏览器内核是包的一部分，它不再被服务端记录的版本号否决。
+本版的重点是「云模式不再因为本机缓存权限被锁死」，同时带上最近两版的修复。
 
-### 内核（本次修复）
+### 云模式与内核
 
-- **内核随包一起发布，版本不再决定能否启动**：实例配置的内核与服务端发布的版本号只参与「优先用哪个」，不再作为放行条件。
-- 服务端没有给出版本号、或给的版本与你机器上的不一致时，**照常启动**，使用包内自带内核。
-- 启动之后不再因为「实际运行的内核版本 ≠ 发布环境记录的版本」而中止，改为写入日志。
-- 仍然只使用随应用提供、清单校验通过的内核；包内内核的身份由清单与 payload 摘要保证。
+- 缓存目录不可写时（Windows 上常见于继承旧安装 ACL 的 `data\\cloud`）：先隔离旧目录并在原处重建（重建目录继承父目录权限），仍不可写则回退到用户数据目录；只有都失败才拒绝云模式，错误里直接给出路径与两处修改建议。
+- 云锁定页不再把本机权限问题说成「控制面暂时不可达」。
+- 成员运行（服务端不下发内核）总是使用随包自带内核：实例配置的核心与服务端发布版本只参与排序，解析失败也不再中止启动。
+- 启动后不再因「运行内核版本 ≠ 已发布环境记录」而中止，改为记录告警。
+- 云模式退出不再被契约校验弹窗取消。
 
-### 从 1.0.2 更新
+### 更新
 
-存在 1.0.2 上启动报 `public-cookie run has no bound browser core artifact` 的实例，升级到本版即可正常启动；无需改动实例的内核配置。
+- 应用内更新通道改由公开仓的 release 资产提供，发布不再需要任何管理员凭据。
+- **本版之前的安装包没有内置更新公钥**，收不到应用内更新；这一次整包更新仍是省不掉的一步。
 
-### 已知限制（与 1.0.2 相同）
+### Windows
 
-- 本版之前的安装包没有内置更新公钥，收不到应用内更新；装了带公钥的版本之后才会生效。
-- macOS 未公证（ad-hoc 签名），Windows 安装包未签名。
-- 旧数据迁移的权限诊断仍有已知失败，详见 `macos-known-limitations.txt`。
+- **不再发布便携包**（`*-windows-amd64-portable.zip`）：安装包本身就是当前用户安装、免提权，便携版没有独立用途。请下载 `MesBrowser-Setup-1.0.4.exe`。
+- 安装包未签名（与上一版相同）。
+
+### macOS
+
+- ad-hoc 签名、未公证（与上一版相同）；首次打开若被 Gatekeeper 拦下，请在「系统设置 → 隐私与安全性」中放行。
 '''
 with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
     root = Path(temporary)
