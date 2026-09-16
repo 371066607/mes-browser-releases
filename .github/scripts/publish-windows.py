@@ -13,35 +13,28 @@ repository = os.environ['GITHUB_REPOSITORY']
 expected = os.environ['EXPECTED_ARTIFACT_SHA256'].removeprefix('sha256:')
 if not re.fullmatch(r'[0-9a-f]{64}', expected):
     raise SystemExit('Invalid expected artifact SHA-256')
-version = '1.0.4'
+version = '1.0.5'
 # The portable ZIP is gone: the installer is already a per-user, no-elevation
 # install, so a portable copy had no separate audience and only cost build time.
 names = [f'MesBrowser-Setup-{version}.exe', 'SHA256SUMS.txt']
-notes = '''## Mes Browser 1.0.4 · Windows / macOS
+notes = '''## Mes Browser 1.0.5 · Windows / macOS
 
-本版的重点是「云模式不再因为本机缓存权限被锁死」，同时带上最近两版的修复。
+本版继续收拾 Windows 上「云模式被本机权限锁死」这一类问题，并让状态与缓存路径更耐操。
 
-### 云模式与内核
+### 云模式与缓存
 
-- 缓存目录不可写时（Windows 上常见于继承旧安装 ACL 的 `data\\cloud`）：先隔离旧目录并在原处重建（重建目录继承父目录权限），仍不可写则回退到用户数据目录；只有都失败才拒绝云模式，错误里直接给出路径与两处修改建议。
-- 云锁定页不再把本机权限问题说成「控制面暂时不可达」。
-- 成员运行（服务端不下发内核）总是使用随包自带内核：实例配置的核心与服务端发布版本只参与排序，解析失败也不再中止启动。
-- 启动后不再因「运行内核版本 ≠ 已发布环境记录」而中止，改为记录告警。
-- 云模式退出不再被契约校验弹窗取消。
+- 安装目录不可写时（Program Files、其他账户建立的目录、带着旧 ACL 拷贝过来的目录），状态与缓存改到 `%LOCALAPPDATA%`；安装目录可写时行为不变。
+- 缓存根恢复反复失败时不再死磕坏目录：会隔离并在原处重建；成员 public-cookie 缓存改为按 scope 隔离，一个 scope 坏掉不再让整块缓存不可用。
+- Windows 遗留文件清理对 ACCESS_DENIED / SHARING_VIOLATION / LOCK_VIOLATION 做有限重试，并可修复删除句柄与权限。
 
 ### 更新
 
-- 应用内更新通道改由公开仓的 release 资产提供，发布不再需要任何管理员凭据。
-- **本版之前的安装包没有内置更新公钥**，收不到应用内更新；这一次整包更新仍是省不掉的一步。
+- 应用内更新通道改由公开仓的 release 资产提供：从本版起，装了 1.0.2 及以上（内置公钥）的客户端会在应用内直接看到更新。
 
-### Windows
+### 已知限制（与前几版相同）
 
-- **不再发布便携包**（`*-windows-amd64-portable.zip`）：安装包本身就是当前用户安装、免提权，便携版没有独立用途。请下载 `MesBrowser-Setup-1.0.4.exe`。
-- 安装包未签名（与上一版相同）。
-
-### macOS
-
-- ad-hoc 签名、未公证（与上一版相同）；首次打开若被 Gatekeeper 拦下，请在「系统设置 → 隐私与安全性」中放行。
+- macOS 为 ad-hoc 签名、未公证；Windows 安装包未签名。
+- 本版之前的安装包没有内置更新公钥，收不到应用内更新。
 '''
 with tempfile.TemporaryDirectory(prefix='mes-release-') as temporary:
     root = Path(temporary)
