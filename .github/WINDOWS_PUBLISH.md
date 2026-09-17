@@ -1,10 +1,12 @@
 # Windows 发布检查
 
-`Publish verified Windows packages` 需要明确填写版本、原构建 run、成功的完整验证 run 和下载归档 SHA-256。归档可以来自完整构建或 installer-only 独立验证；`fast`、失败/跳过场景、未提交源码快照均被拒绝。
+发布下载版本使用本地命令，不经由 CI workflow：在 `ant-browsers` 里运行
 
-保留现有 `WINDOWS_PACKAGE_ARTIFACT_URL` 临时下载地址 secret。另需 `WINDOWS_BUILD_READ_TOKEN` 能读取 `371066607/mes-browser-windows-build` 的 Actions runs/artifacts（最小只读范围）；没有配置时尝试当前 `GH_TOKEN`，若没有跨仓读取权限会在创建 Release 前失败。不要把 token 或临时 URL 写入日志。
+```sh
+make publish-windows-release WINDOWS_VERIFICATION_RUN=<mes-browser-windows-build 上成功的完整验证 run id>
+```
 
-报告必须匹配原安装器、原校验文件和来源记录；发布脚本还向 GitHub API 核对 main 上受信任 workflow 的成功运行、提交及唯一 artifact digest。通过后才创建 draft、上传、核对远端哈希并发布。保持 Windows Server 自动验证与用户 Windows 11 验收的区别。
+（对应 `tools/windows-verification/publish_verified_windows.py`）。命令下载该 run 产出的已验证安装包，核对安装包、`SHA256SUMS.txt` 与本地源码提交三者一致后，先建 draft release、上传，再从 GitHub API 回读远端资产摘要确认一致，最后才取消 draft。任何一步不一致都不发布，也拒绝覆盖已存在的同名 tag。全程只需要本机已登录的 `gh`，不需要任何仓库 secret。
 
 本地无发布副作用的验证：
 
