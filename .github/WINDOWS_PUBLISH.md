@@ -12,4 +12,4 @@
 python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
 ```
 
-`windows_verification.py` 的 `windows-release-v1` 是版本化数据契约；桌面更新入口保留同契约的本地副本，不从相邻仓库导入源码。修改必需场景时同步消费者与回归用例，旧报告不得自动升级为通过。
+`windows_verification.py` 的 `windows-release-v2` 是版本化数据契约，要求额外执行缺失数据库恢复的拒绝与同意场景（`missing-state-recovery`），共 12 项；桌面更新入口保留同契约的本地副本，不从相邻仓库导入源码。修改必需场景时同步消费者与回归用例，旧报告不得自动升级为通过。

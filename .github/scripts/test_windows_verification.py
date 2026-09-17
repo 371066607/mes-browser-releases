@@ -17,7 +17,7 @@ class VerificationTests(unittest.TestCase):
         digest = hashlib.sha256(payload).hexdigest()
         (self.root / "MesBrowser-Setup-1.2.3.exe").write_bytes(payload)
         (self.root / "SHA256SUMS.txt").write_text(digest + "  MesBrowser-Setup-1.2.3.exe\n")
-        self.report = dict(schemaVersion=1, suite="windows-release-v1", verificationLevel="full", releaseEligible=True,
+        self.report = dict(schemaVersion=1, suite="windows-release-v2", verificationLevel="full", releaseEligible=True,
                            repository=BUILD_REPOSITORY, version="1.2.3", installerSha256=digest, sourceCommit="a" * 40,
                            sourceSnapshotSha256="b" * 64, buildRepositoryCommit="c" * 40, verificationCommit="d" * 40,
                            sourceBuildRun="101", verificationRun="102", includesWorktreeChanges=False,
@@ -67,6 +67,24 @@ class VerificationTests(unittest.TestCase):
     def test_reject_changed_installer_without_overwriting_checksums(self):
         self.save()
         (self.root / "MesBrowser-Setup-1.2.3.exe").write_bytes(b"different")
+        with self.assertRaises(ValueError):
+            validate_bundle(self.root, "1.2.3")
+
+    def test_reject_report_without_executed_missing_state_recovery(self):
+        original = copy.deepcopy(self.report)
+        for status in (None, "failed", "skipped", "not-executed"):
+            with self.subTest(status=status):
+                self.report = copy.deepcopy(original)
+                self.report["cases"] = [c for c in self.report["cases"] if c["name"] != "missing-state-recovery"]
+                if status is not None:
+                    self.report["cases"].append(dict(name="missing-state-recovery", status=status))
+                self.save()
+                with self.assertRaises(ValueError):
+                    validate_bundle(self.root, "1.2.3")
+
+    def test_reject_previous_suite_even_with_new_case_names(self):
+        self.report["suite"] = "windows-release-v1"
+        self.save()
         with self.assertRaises(ValueError):
             validate_bundle(self.root, "1.2.3")
 

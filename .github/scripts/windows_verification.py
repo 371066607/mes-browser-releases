@@ -6,11 +6,11 @@ import re
 import subprocess
 
 BUILD_REPOSITORY = "371066607/mes-browser-windows-build"
-SUITE = "windows-release-v1"
+SUITE = "windows-release-v2"
 REQUIRED_CASES = frozenset({
     "artifact-integrity", "native-windows-regression", "frontend-assets", "restricted-install",
     "installer-registration", "desktop-activation", "readonly-install", "historical-upgrade",
-    "lock-failure", "core-cdp", "owned-process-cleanup",
+    "lock-failure", "core-cdp", "owned-process-cleanup", "missing-state-recovery",
 })
 WORKFLOWS = {
     ".github/workflows/build-windows.yml": "MesBrowser-windows-amd64-",
